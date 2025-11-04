@@ -1,14 +1,18 @@
 // Instance-mode sketch for tab 2
 registerSketch("sk5", function (p) {
-  // used copilot for drawing and ratio prep, going to set up data logic myself
+  // normalize country -> filename key (lowercase, non-alnum -> underscore)
+  function normalizeName(name) {
+    if (!name) return "";
+    return String(name)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+  }
 
-  // Data model for 10 bottles
-  // mm: precipitation in millimeters (per year)
   const bottles = Array.from({ length: 10 }, (_, i) => ({
     id: i,
     country: "",
     mm: 0,
-    image: null,
   }));
 
   // data
@@ -23,20 +27,20 @@ registerSketch("sk5", function (p) {
   // Layout
   const cols = 5;
   const rows = 2;
-  const margin = 40; // outer side/bottom margin
-  const topPad = 120; // extra space at the top for a future title/intro
+  const margin = 40;
+  const topPad = 120;
   const bottomPad = 110;
-  const gutter = 20; // spacing inside cells
 
   let yearSlider;
   const yearLabels = ["Average", "2020", "2021", "2022", "2023", "2024"];
 
   function drawBottles(table) {
-    country = table.getColumn("country");
-    precip = table.getColumn("precipitation");
+    const countries = table.getColumn("country");
+    const precip = table.getColumn("precipitation");
 
-    for (let i = 0; i < country.length; i++) {
-      setBottle(i, Number(precip[i]), country[i]);
+    // update exactly bottles.length items so all bottles get values
+    for (let i = 0; i < bottles.length; i++) {
+      setBottle(i, Number(precip[i]), countries[i]);
     }
   }
 
@@ -65,15 +69,14 @@ registerSketch("sk5", function (p) {
 
     // Slider (discrete steps: 0..5)
     yearSlider = p.createSlider(0, yearLabels.length - 1, 0, 1);
-    // Place under the canvas, align with the drawing margins, and match inner width
     yearSlider.parent(cnv.parent());
-    const sliderW = p.width - margin * 2; // same width as the grid area
+    const sliderW = p.width - margin * 2;
     yearSlider.style("width", `${sliderW}px`);
     yearSlider.style("display", "block");
-    yearSlider.style("margin", `12px 0 0 ${margin}px`); // top, right, bottom, left
+    yearSlider.style("margin", `12px 0 0 ${margin}px`);
     yearSlider.input(() => {
-      let value = yearSlider.value();
-      let table = yearTables[value];
+      const value = yearSlider.value();
+      const table = yearTables[value];
       drawBottles(table);
       p.redraw();
     });
@@ -83,9 +86,20 @@ registerSketch("sk5", function (p) {
 
   p.draw = function () {
     p.background(245);
-    let max_precipitation = 4000; // each bottle holds 4000 mm of water
+    p.textSize(32);
+    p.fill(0);
+    p.text("Where does it rain the most in South East Asia?", 55, 50);
+    p.textSize(20);
+    p.text(
+      "On average, Indonesia recieves the highest mm of rainfall each year. Use the slider to explore how these numbers have changed over the years.",
+      55,
+      70,
+      700
+    );
+    p.textSize(15);
+    p.text("Each bottle holds 4000mm of water.", 55, 130, 700);
 
-    // Compute grid cell sizes (leave extra space at top)
+    const max_precipitation = 4000;
     const gridW = p.width - margin * 2;
     const gridH = p.height - bottomPad - (margin + topPad);
     const baseX = margin;
@@ -93,11 +107,8 @@ registerSketch("sk5", function (p) {
     const cellW = gridW / cols;
     const cellH = gridH / rows;
 
-    // Selected year key
     const selIdx = yearSlider ? yearSlider.value() : 0;
-    const selKey = yearLabels[selIdx];
 
-    // Draw bottles
     for (let idx = 0; idx < bottles.length; idx++) {
       const b = bottles[idx];
       const col = idx % cols;
@@ -106,24 +117,35 @@ registerSketch("sk5", function (p) {
       const cellX = baseX + col * cellW;
       const cellY = baseY + row * cellH;
 
-      // Bottle size within cell — wider and shorter
       const bottleW = cellW * 0.9;
       const bottleH = cellH * 0.8;
 
       const cx = cellX + cellW / 2;
       const cy = cellY + cellH / 2;
 
-      // Draw a bottle at center of the cell
       const ratio = p.constrain(b.mm / max_precipitation, 0, 1);
-      drawBottle(cx, cy, bottleW, bottleH, ratio);
+      drawBottle(cx, cy, bottleW, bottleH, ratio, b);
+
+      // country and mm text under bottle
+      p.push();
+      p.textAlign(p.CENTER, p.TOP);
+      p.fill(30);
+      p.noStroke();
+      p.textSize(12);
+
+      const textY = cy + bottleH / 2 + 8;
+      const countryText = b.country || "";
+      const mmText = typeof b.mm === "number" ? `${Math.round(b.mm)} mm` : "";
+
+      p.text(countryText, cx, textY);
+      p.text(mmText, cx, textY + 14);
+      p.pop();
     }
 
-    // Draw slider labels under the slider area (aligned across the canvas)
     drawYearLabels(selIdx);
   };
 
-  function drawBottle(cx, cy, w, h, fillRatio) {
-    // Bottle
+  function drawBottle(cx, cy, w, h, fillRatio, b) {
     const bodyW = w * 0.75;
     const neckW = bodyW * 0.4;
     const capH = h * 0.06;
@@ -144,7 +166,7 @@ registerSketch("sk5", function (p) {
     p.fill(220);
     p.rect(cx - neckW / 2, yTop + capH, neckW, neckH);
 
-    // WATER: full bottle width, sits under the outline
+    // Water
     const waterH = bodyH * p.constrain(fillRatio, 0, 1);
     const waterY = bodyY + bodyH - waterH;
     if (waterH > 0) {
@@ -153,29 +175,30 @@ registerSketch("sk5", function (p) {
       p.rect(bodyX, waterY, bodyW, waterH, 0, 0, cornerR, cornerR);
     }
 
-    // OUTLINE: stroke only (no fill) so water shows edge-to-edge
+    // Outline
     p.noFill();
     p.stroke(50);
     p.strokeWeight(2);
     p.rect(bodyX, bodyY, bodyW, bodyH, cornerR);
 
-    // LABEL: translucent wrap band, full width, square corners (no rounding)
+    // Label band
     const bandH = bodyH * 0.34;
     const bandY = bodyY + bodyH * 0.45 - bandH / 2;
-    p.fill(255, 170); // translucent white
-    p.stroke(140, 180); // soft edge
+    p.fill(255, 170);
+    p.stroke(140, 180);
     p.strokeWeight(1.5);
-    p.rect(bodyX, bandY, bodyW, bandH); // square corners
+    p.rect(bodyX, bandY, bodyW, bandH);
 
-    // Subtle edge shading to suggest wrap (optional)
+    // Edge shading
     p.noStroke();
     p.fill(0, 0, 0, 20);
-    p.rect(bodyX, bandY, 6, bandH); // left shade
-    p.rect(bodyX + bodyW - 6, bandY, 6, bandH); // right shade
+    p.rect(bodyX, bandY, 6, bandH);
+    p.rect(bodyX + bodyW - 6, bandY, 6, bandH);
   }
 
   function drawYearLabels(selIdx) {
-    const y = p.height - 24; // near bottom
+    p.push(); // save styles
+    const y = p.height - 24;
     const left = margin;
     const right = p.width - margin;
     const span = right - left;
@@ -188,19 +211,19 @@ registerSketch("sk5", function (p) {
       p.textSize(i === selIdx ? 14 : 12);
       p.text(yearLabels[i], x, y);
     }
+    p.pop(); // restore previous textAlign (and other styles)
   }
 
-  // Update a single bottle now (e.g., from UI or code)
   function setBottle(index, mm, country) {
     if (index < 0 || index >= bottles.length) return;
     if (typeof mm === "number") bottles[index].mm = mm;
     if (country !== undefined) bottles[index].country = country;
   }
+
   p.redraw();
 
   p.windowResized = function () {
     p.resizeCanvas(800, 900);
-    // Keep the slider width/offset in sync if canvas changes
     if (yearSlider) {
       const sliderW = p.width - margin * 2;
       yearSlider.style("width", `${sliderW}px`);

@@ -6,10 +6,17 @@ registerSketch("sk5", function (p) {
   // mm: precipitation in millimeters (per year)
   const bottles = Array.from({ length: 10 }, (_, i) => ({
     id: i,
-    country: `C${i + 1}`,
-    mm: 0, // set this later (e.g., 850)
-    img: null, // reserve for future PNG
+    country: "",
+    mm: 0,
   }));
+
+  // data
+  let average;
+  let twenty;
+  let twentyone;
+  let twentytwo;
+  let twentythree;
+  let twentyfour;
 
   // Layout
   const cols = 5;
@@ -22,25 +29,30 @@ registerSketch("sk5", function (p) {
   let yearSlider;
   const yearLabels = ["Average", "2020", "2021", "2022", "2023", "2024"];
 
-  let max_precipitation = 3500;
+  function drawBottles(table) {
+    country = table.getColumn("country");
+    precip = table.getColumn("precipitation");
+    console.log(country);
+    console.log(precip);
+
+    for (let i = 0; i < country.length; i++) {
+      setBottle(i, Number(precip[i]), country[i]);
+    }
+  }
+
+  p.preload = function () {
+    average = p.loadTable("/assets/avg_sea_precip.csv", "csv", "header");
+  };
 
   p.setup = function () {
     const cnv = p.createCanvas(800, 900);
     p.textFont("sans-serif");
     p.noLoop();
 
-    // Example demo values (remove or replace later)
-    // setBottle(i, mm, country)
-    setBottle(0, 300, "USA");
-    setBottle(1, 600, "Spain");
-    setBottle(2, 1200, "Japan");
-    setBottle(3, 900, "India");
-    setBottle(4, 1800, "Indonesia");
-    setBottle(5, 1100, "Brazil");
-    setBottle(6, 450, "Egypt");
-    setBottle(7, 750, "France");
-    setBottle(8, 1400, "Vietnam");
-    setBottle(9, 2200, "Malaysia"); // will push the scale if highest
+    avgCountry = average.getColumn("country");
+    avgPrecip = average.getColumn("precipitation");
+
+    drawBottles(average);
 
     // Slider (discrete steps: 0..5)
     yearSlider = p.createSlider(0, yearLabels.length - 1, 0, 1);
@@ -57,6 +69,7 @@ registerSketch("sk5", function (p) {
 
   p.draw = function () {
     p.background(245);
+    let max_precipitation = 4000; // each bottle holds 4000 mm of water
 
     // Compute grid cell sizes (leave extra space at top)
     const gridW = p.width - margin * 2;
@@ -69,10 +82,6 @@ registerSketch("sk5", function (p) {
     // Selected year key
     const selIdx = yearSlider ? yearSlider.value() : 0;
     const selKey = yearLabels[selIdx];
-
-    // Determine current max mm to scale fills
-    const currentMax = bottles.reduce((m, b) => (b.mm > m ? b.mm : m), 0);
-    const mmMax = Math.max(max_precipitation, currentMax || 0);
 
     // Draw bottles
     for (let idx = 0; idx < bottles.length; idx++) {
@@ -91,32 +100,24 @@ registerSketch("sk5", function (p) {
       const cy = cellY + cellH / 2;
 
       // Draw a bottle at center of the cell
-      const ratio = mmMax > 0 ? p.constrain(b.mm / mmMax, 0, 1) : 0;
-      drawBottle(
-        cx,
-        cy,
-        bottleW,
-        bottleH,
-        ratio /* country, mm removed from visuals */
-      );
+      const ratio = p.constrain(b.mm / max_precipitation, 0, 1);
+      drawBottle(cx, cy, bottleW, bottleH, ratio);
     }
 
     // Draw slider labels under the slider area (aligned across the canvas)
     drawYearLabels(selIdx);
   };
 
-  function drawBottle(cx, cy, w, h, fillRatio /* , country, mm */) {
+  function drawBottle(cx, cy, w, h, fillRatio) {
+    // Bottle
     const bodyW = w * 0.75;
     const neckW = bodyW * 0.4;
     const capH = h * 0.06;
     const neckH = h * 0.12;
     const bodyH = h - neckH - capH;
-
     const yTop = cy - h / 2;
     const bodyX = cx - bodyW / 2;
     const bodyY = yTop + capH + neckH;
-
-    // Use the same corner radius everywhere
     const cornerR = 18;
 
     // Cap
@@ -135,7 +136,6 @@ registerSketch("sk5", function (p) {
     if (waterH > 0) {
       p.noStroke();
       p.fill(70, 150, 220, 220);
-      // tl=0, tr=0, br=cornerR, bl=cornerR
       p.rect(bodyX, waterY, bodyW, waterH, 0, 0, cornerR, cornerR);
     }
 
@@ -182,22 +182,7 @@ registerSketch("sk5", function (p) {
     if (typeof mm === "number") bottles[index].mm = mm;
     if (country !== undefined) bottles[index].country = country;
   }
-
-  // Future: apply a dataset [{ country: string, precipitation_mm: number, imgPath?: string }, ...]
-  // Example usage once you have data: applyDataset(myData);
-  function applyDataset(records) {
-    // Map up to 10 items into the bottles
-    for (let i = 0; i < bottles.length && i < records.length; i++) {
-      const r = records[i] || {};
-      bottles[i].country = r.country || bottles[i].country;
-      bottles[i].mm =
-        typeof r.precipitation_mm === "number"
-          ? r.precipitation_mm
-          : bottles[i].mm;
-      // If you later preload images, you could set bottles[i].img = p.loadImage(r.imgPath);
-    }
-    p.redraw();
-  }
+  p.redraw();
 
   p.windowResized = function () {
     p.resizeCanvas(800, 900);

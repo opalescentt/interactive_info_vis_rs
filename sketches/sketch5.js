@@ -1,6 +1,6 @@
 // Instance-mode sketch for tab 2
 registerSketch("sk5", function (p) {
-  // used copilot for drawing and ratio prep, going to set up logic myself
+  // used copilot for drawing and ratio prep, going to set up data logic myself
 
   // Data model for 10 bottles
   // mm: precipitation in millimeters (per year)
@@ -8,6 +8,7 @@ registerSketch("sk5", function (p) {
     id: i,
     country: "",
     mm: 0,
+    image: null,
   }));
 
   // data
@@ -17,6 +18,7 @@ registerSketch("sk5", function (p) {
   let twentytwo;
   let twentythree;
   let twentyfour;
+  let yearTables;
 
   // Layout
   const cols = 5;
@@ -32,8 +34,6 @@ registerSketch("sk5", function (p) {
   function drawBottles(table) {
     country = table.getColumn("country");
     precip = table.getColumn("precipitation");
-    console.log(country);
-    console.log(precip);
 
     for (let i = 0; i < country.length; i++) {
       setBottle(i, Number(precip[i]), country[i]);
@@ -47,16 +47,20 @@ registerSketch("sk5", function (p) {
     twentytwo = p.loadTable("/assets/2022_sea_precip.csv", "csv", "header");
     twentythree = p.loadTable("/assets/2023_sea_precip.csv", "csv", "header");
     twentyfour = p.loadTable("/assets/2024_sea_precip.csv", "csv", "header");
+    yearTables = [
+      average,
+      twenty,
+      twentyone,
+      twentytwo,
+      twentythree,
+      twentyfour,
+    ];
   };
 
   p.setup = function () {
     const cnv = p.createCanvas(800, 900);
     p.textFont("sans-serif");
     p.noLoop();
-
-    avgCountry = average.getColumn("country");
-    avgPrecip = average.getColumn("precipitation");
-
     drawBottles(average);
 
     // Slider (discrete steps: 0..5)
@@ -67,7 +71,12 @@ registerSketch("sk5", function (p) {
     yearSlider.style("width", `${sliderW}px`);
     yearSlider.style("display", "block");
     yearSlider.style("margin", `12px 0 0 ${margin}px`); // top, right, bottom, left
-    yearSlider.input(() => p.redraw());
+    yearSlider.input(() => {
+      let value = yearSlider.value();
+      let table = yearTables[value];
+      drawBottles(table);
+      p.redraw();
+    });
 
     p.redraw();
   };

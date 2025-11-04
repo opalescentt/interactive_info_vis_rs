@@ -37,8 +37,6 @@ registerSketch("sk5", function (p) {
   function drawBottles(table) {
     const countries = table.getColumn("country");
     const precip = table.getColumn("precipitation");
-
-    // update exactly bottles.length items so all bottles get values
     for (let i = 0; i < bottles.length; i++) {
       setBottle(i, Number(precip[i]), countries[i]);
     }

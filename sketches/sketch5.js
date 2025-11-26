@@ -43,12 +43,12 @@ registerSketch("sk5", function (p) {
   }
 
   p.preload = function () {
-    average = p.loadTable("./assets/avg_sea_precip.csv", "csv", "header");
-    twenty = p.loadTable("./assets/2020_sea_precip.csv", "csv", "header");
-    twentyone = p.loadTable("./assets/2021_sea_precip.csv", "csv", "header");
-    twentytwo = p.loadTable("./assets/2022_sea_precip.csv", "csv", "header");
-    twentythree = p.loadTable("./assets/2023_sea_precip.csv", "csv", "header");
-    twentyfour = p.loadTable("./assets/2024_sea_precip.csv", "csv", "header");
+    average = p.loadTable("/assets/avg_sea_precip.csv", "csv", "header");
+    twenty = p.loadTable("/assets/2020_sea_precip.csv", "csv", "header");
+    twentyone = p.loadTable("/assets/2021_sea_precip.csv", "csv", "header");
+    twentytwo = p.loadTable("/assets/2022_sea_precip.csv", "csv", "header");
+    twentythree = p.loadTable("/assets/2023_sea_precip.csv", "csv", "header");
+    twentyfour = p.loadTable("/assets/2024_sea_precip.csv", "csv", "header");
     yearTables = [
       average,
       twenty,
